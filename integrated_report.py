@@ -96,102 +96,160 @@ def combine_reports(log_report, testcase_report, yang_report, output_file):
       height: 100%;
       border: none;
     }}
-    +   /* dark‐mode overrides */
-   .dark-mode {{
-     background-color: #1e1e1e;
-     color: #f0f0f0;
-   }}
-   .dark-mode #fixedHeader {{
-     background-color: rgba(50, 50, 50, 0.9);
-   }}
-   .dark-mode .nav-button {{
-     background-color: #555;
-     color: #f0f0f0;
-   }}
-   .dark-mode .nav-button:hover {{
-     background-color: #888;
-   }}
-   /* invert iframe content for dark theme */
-   .dark-mode iframe {{
-     filter: invert(1) hue-rotate(180deg);
-   }}
-
-   .switch {{
-  position: relative;
-  display: inline-block;
-  width: 60px;
-  height: 34px;
-}}
-
-.switch input {{ 
-  opacity: 0;
-  width: 0;
-  height: 0;
-}}
-
-.slider {{
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #707071;
-  -webkit-transition: .4s;
-  transition: .4s;
-}}
-
-.slider:before {{
-  position: absolute;
-  content: "";
-  height: 26px;
-  width: 26px;
-  left: 4px;
-  bottom: 4px;
-  background-color: white;
-  -webkit-transition: .4s;
-  transition: .4s;
-}}
-
-input:checked + .slider {{
-  background-color: #d1d3d5;
-}}
-
-input:focus + .slider {{
-  box-shadow: 0 0 1px #2196F3;
-}}
-
-input:checked + .slider:before {{
-  -webkit-transform: translateX(26px);
-  -ms-transform: translateX(26px);
-  transform: translateX(26px);
-}}
-
-/* Rounded sliders */
-.slider.round {{
-  border-radius: 34px;
-}}
-
-.slider.round:before {{
-  border-radius: 50%;
-}}
+    /* ——— Toggle Switch CSS ——— */
+    .switch {{
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 24px;
+      margin-right: 10px;
+    }}
+    .switch input {{
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }}
+    .slider {{
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 24px;
+    }}
+    .slider:before {{
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }}
+    input:checked + .slider {{
+      background-color: #d27e1d;
+    }}
+    input:checked + .slider:before {{
+      transform: translateX(26px);
+    }}
+    /* ——— Parent‐page orange theme ——— */
+  body.orange #fixedHeader {{
+    background-color: #FFE53B;
+  }}
+  body.orange .nav-button {{
+    background-color: #FF2525;
+    color: #fff;
+  }}
+  body.orange .nav-button:hover {{
+    background-color: #cb0000;
+    color: #000;
+  }}
   </style>
   <script>
-    function showSection(sectionId) {{
-      document.querySelectorAll('.section').forEach(function(sec) {{
-        sec.classList.remove('active');
-      }});
-      document.getElementById(sectionId).classList.add('active');
+  // inject or clear orange theme css inside each iframe
+    function applyTheme(isOrange) {{
+    // 1) Toggle parent theme
+    document.body.classList.toggle('orange', isOrange);
+
+    // 2) Inject/clear iframe theme
+    const orangeCSS = `
+      body {{
+        background-color: #FFE53B !important;
+        background-image: linear-gradient(147deg, #FFE53B 0%, #FF2525 100%) !important;
+      }}
+      /* any header tag */
+  header,
+  header.text-center,
+  header.text-center.text-white,.header-container {{
+    background-color: #FFE53B !important;
+    background-image: linear-gradient(147deg, #FFE53B 0%, #FF2525 50%,  #FFE53B 100%) !important;
+  }}
+
+  /* override white‐text everywhere inside */
+  .text-white,
+  header.text-center.text-white h4,
+  h4.display-4{{
+   background-color: #FFE53B !important;
+    background-image: linear-gradient(147deg, #FFE53B 0%, #FF2525 50%,  #FFE53B 100%) !important;
+  }}
+
+  /* navbars or fixed headers too */
+  #fixedHeader {{
+    background-color: #FFE53B !important;
+    background-image: linear-gradient(147deg, #FFE53B 0%, #FF2525 100%) !important;
+  }}
+  .container-main {{
+  background-color: transparent !important;
+  }}
+    `;
+    document.querySelectorAll('iframe').forEach(frame => {{
+      const doc = frame.contentDocument || frame.contentWindow.document;
+      let tag = doc.getElementById('global-theme');
+      if (!tag) {{
+        tag = doc.createElement('style');
+        tag.id = 'global-theme';
+        doc.head.appendChild(tag);
+      }}
+      tag.textContent = isOrange ? orangeCSS : '';
+    }});
+  }}
+  function showSection(id) {{
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }}
+
+  window.onload = function() {{
+    // 0) Nuke any “#…” in the URL so the browser can’t auto‑jump
+    if (window.location.hash) {{
+      history.replaceState(null, '', window.location.pathname + window.location.search);
     }}
-    window.onload = function() {{
-      // Show the testcase report by default.
+    // 1) Force the parent back to the very top
+    window.scrollTo(0, 0);
+
+    const params = new URLSearchParams(window.location.search);
+    const testId = params.get('test_id');
+
+    if (testId) {{
+      // 2) Show the Log Report
+      showSection('log_section');
+
+      // 3) Drill into the iframe and highlight + scroll
+      const frame = document.querySelector('#log_section iframe');
+      const doc   = frame.contentDocument || frame.contentWindow.document;
+
+      const leftLi = doc.querySelector(`#testcase-list li[data-tc="${{testId}}"]`);
+      const target = doc.getElementById('testcase-' + testId);
+
+      if (leftLi && target) {{
+        // clear old
+        doc.querySelectorAll('#testcase-list li.active, #logContent > div.active')
+           .forEach(el => el.classList.remove('active'));
+
+        leftLi.classList.add('active');
+        target.classList.add('active');
+
+        // scroll the left list
+        doc.querySelector('#left-panel .card-body')
+           .scrollTop = leftLi.offsetTop - 100;
+
+        // INSTANT jump in the right panel (no smooth)
+        const rightContainer = doc.getElementById('rightPanelBody');
+        rightContainer.scrollTop = target.offsetTop - 60;
+      }}
+    }} else {{
+      // default: Testcase tab
       showSection('testcase_section');
-       // hook up theme toggle
-     document.getElementById('theme-toggle').addEventListener('click', function() {{
-       document.body.classList.toggle('dark-mode');
-     }});
-    }};
-  </script>
+    }}
+const toggle = document.getElementById('theme-toggle');
+    toggle.addEventListener('change', () => {{
+      applyTheme(toggle.checked);
+    }});
+  }};
+</script>
+
+
 </head>
 <body>
   <div id="fixedHeader">
@@ -199,9 +257,9 @@ input:checked + .slider:before {{
     <button class="nav-button" onclick="showSection('log_section')">Log Report</button>
     <button class="nav-button" onclick="showSection('yang_section')">Yang Tree Report</button>
     <label class="switch">
-    <input id="theme-toggle" type="checkbox" checked>
-    <span class="slider round"></span>
-  </label>
+      <input id="theme-toggle" type="checkbox">
+      <span class="slider"></span>
+    </label>
   </div>
   <div id="log_section" class="section">
     <iframe srcdoc="{encoded_log}"></iframe>
